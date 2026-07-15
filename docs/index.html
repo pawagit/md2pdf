@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>md2pdf — Markdown → PDF in your browser</title>
+  <meta name="description" content="Convert Markdown to a styled PDF entirely in your browser — nothing is uploaded.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📄</text></svg>">
+  <style>
+    /* ── Page chrome (the app around the document preview) ─────────── */
+    :root {
+      --accent: #0062ad;
+      --accent-secondary: #d97706;
+      --ink: #232a31;
+      --ink-soft: #5b6670;
+      --border: #d4d9df;
+      --bg: #eceff3;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      color: var(--ink);
+      background: var(--bg);
+      line-height: 1.5;
+    }
+
+    .wrap {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem 1rem 4rem;
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 1.6rem;
+      color: var(--accent);
+    }
+
+    header p.tagline {
+      margin: 0.3rem 0 0;
+      color: var(--ink-soft);
+    }
+
+    .privacy {
+      margin-top: 0.4rem;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+    }
+
+    .privacy strong { color: var(--ink); }
+
+    header a { color: var(--accent); text-decoration: none; }
+    header a:hover { text-decoration: underline; }
+
+    /* Drop zone */
+    #dropzone {
+      margin-top: 1.5rem;
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      background: #fff;
+      padding: 2.2rem 1.5rem;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+
+    #dropzone.dragover {
+      border-color: var(--accent);
+      background: #e8f1fb;
+    }
+
+    #dropzone .big { font-size: 1.05rem; }
+    #dropzone .hint { color: var(--ink-soft); font-size: 0.85rem; margin-top: 0.4rem; }
+    #dropzone .hint a { color: var(--accent); }
+
+    /* Controls row */
+    #controls {
+      display: none;
+      margin-top: 1rem;
+      padding: 0.75rem 1rem;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+
+    #controls.active { display: flex; }
+
+    #filemeta { flex: 1 1 auto; min-width: 200px; }
+    #filename { font-weight: 600; }
+    #filestamp { color: var(--ink-soft); font-size: 0.85rem; }
+
+    .themes { display: flex; gap: 0.4rem; }
+
+    .themes button {
+      font: inherit;
+      font-size: 0.9rem;
+      padding: 0.35rem 0.9rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      cursor: pointer;
+    }
+
+    .themes button[aria-pressed="true"] {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    #printbtn {
+      font: inherit;
+      font-size: 0.95rem;
+      font-weight: 600;
+      padding: 0.5rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+    }
+
+    #printbtn:hover { background: #00518f; }
+
+    /* Notices */
+    .notice {
+      margin-top: 0.8rem;
+      padding: 0.6rem 1rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+    }
+
+    #browserwarn {
+      display: none;
+      background: #fbf1e1;
+      border-left: 4px solid var(--accent-secondary);
+      color: #7c4a03;
+    }
+
+    .fineprint {
+      margin-top: 0.8rem;
+      font-size: 0.8rem;
+      color: var(--ink-soft);
+    }
+
+    /* Preview: the rendered document, shown as an A4-ish page card */
+    #preview {
+      display: none;
+      margin-top: 1.5rem;
+    }
+
+    #preview.active { display: block; }
+
+    #docframe {
+      display: block;
+      width: 100%;
+      max-width: 794px;   /* A4 width at 96 dpi */
+      margin: 0 auto;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      box-shadow: 0 6px 22px rgba(20, 30, 45, 0.14);
+      background: #fff;
+    }
+
+    footer {
+      margin-top: 2.5rem;
+      font-size: 0.85rem;
+      color: var(--ink-soft);
+      text-align: center;
+    }
+
+    footer a { color: var(--accent); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>md2pdf</h1>
+      <p class="tagline">Markdown → PDF, right here in your browser.</p>
+      <p class="privacy"><strong>100% local:</strong> your file is read and converted on this page —
+        nothing is uploaded anywhere. <a href="https://github.com/pawagit/md2pdf">Source on GitHub</a></p>
+    </header>
+
+    <div id="dropzone" role="button" tabindex="0" aria-label="Drop a Markdown file or click to browse">
+      <div class="big">Drop a <code>.md</code> file here — or click to browse</div>
+      <div class="hint">No file handy? <a href="#" id="samplelink">Try the sample document</a></div>
+    </div>
+    <input type="file" id="fileinput" accept=".md,.markdown,.mdown" hidden>
+
+    <div id="controls">
+      <div id="filemeta">
+        <div id="filename"></div>
+        <div id="filestamp"></div>
+      </div>
+      <div class="themes" role="group" aria-label="Theme">
+        <button type="button" data-theme="comfortable" aria-pressed="false">comfortable</button>
+        <button type="button" data-theme="compact" aria-pressed="true">compact</button>
+      </div>
+      <button type="button" id="printbtn">Save as PDF</button>
+    </div>
+
+    <div class="notice" id="browserwarn">
+      ⚠️ You seem to be using a browser other than Chrome or Edge. The document itself converts
+      fine, but the saved PDF will <strong>not</strong> include page numbers or the
+      "last saved" date footer — only Chromium-based browsers support printed page margin boxes.
+      For the full output, use Chrome/Edge or the
+      <a href="https://github.com/pawagit/md2pdf">command-line tool</a>.
+    </div>
+
+    <p class="fineprint">
+      "Save as PDF" opens your browser's print dialog — pick <em>Save as PDF</em> as the
+      destination. Page numbers and the "last saved" date in the footer require Chrome or Edge;
+      other browsers omit them. Convert many files at once with the
+      <a href="https://github.com/pawagit/md2pdf">CLI version</a>.
+    </p>
+
+    <div id="preview">
+      <iframe id="docframe" title="Converted document preview"></iframe>
+    </div>
+
+    <footer>
+      <a href="https://github.com/pawagit/md2pdf">md2pdf</a> — MIT licensed.
+      Rendering by <a href="https://github.com/markedjs/marked">marked</a> and your browser's print engine.
+    </footer>
+  </div>
+
+  <script src="vendor/marked.umd.js"></script>
+  <script>
+    "use strict";
+
+    // Page margins per theme — keep in sync with config.json
+    const THEMES = {
+      comfortable: { margin: "20mm 20mm 20mm 20mm" },
+      compact: { margin: "14mm 16mm 14mm 16mm" },
+    };
+
+    const state = {
+      theme: "compact",
+      name: null,
+      html: null,
+      stamp: null, // "Last saved YYYY-MM-DD HH:mm"
+    };
+
+    const dropzone = document.getElementById("dropzone");
+    const fileinput = document.getElementById("fileinput");
+    const controls = document.getElementById("controls");
+    const preview = document.getElementById("preview");
+    const frame = document.getElementById("docframe");
+
+    const md = new marked.Marked();
+
+    function formatTimestamp(date) {
+      const p = (n) => String(n).padStart(2, "0");
+      return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())} ${p(date.getHours())}:${p(date.getMinutes())}`;
+    }
+
+    // GitHub-style heading ids (the CLI uses marked-gfm-heading-id; this
+    // post-processing produces equivalent slugs so #anchors keep working)
+    function addHeadingIds(root) {
+      const seen = new Map();
+      root.querySelectorAll("h1, h2, h3, h4, h5, h6").forEach((h) => {
+        let slug = h.textContent.trim().toLowerCase()
+          .replace(/[^\w\- ]+/g, "")
+          .replace(/ /g, "-");
+        const n = seen.get(slug) || 0;
+        seen.set(slug, n + 1);
+        h.id = n ? `${slug}-${n}` : slug;
+      });
+    }
+
+    // Print CSS: per-theme page margins, the footer (page number centered,
+    // timestamp bottom-left — same layout as the CLI), and forced backgrounds
+    // so users don't have to find the "Background graphics" checkbox.
+    function printExtras() {
+      const margin = THEMES[state.theme].margin;
+      const foot = 'font-size: 9px; color: #999; font-family: "Segoe UI", Arial, sans-serif;';
+      return `
+        @page {
+          size: A4;
+          margin: ${margin};
+          @bottom-left { content: "${state.stamp || ""}"; ${foot} }
+          @bottom-center { content: counter(page) " / " counter(pages); ${foot} }
+        }
+        @media print {
+          * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        @media screen {
+          body { padding: ${margin}; }
+        }
+      `;
+    }
+
+    // Same document skeleton as the CLI's buildHtml()
+    function render() {
+      const srcdoc = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="style.css">
+  <style>${printExtras()}</style>
+</head>
+<body class="${state.theme}">
+  <article class="markdown-body">${state.html}</article>
+</body>
+</html>`;
+      frame.srcdoc = srcdoc;
+      controls.classList.add("active");
+      preview.classList.add("active");
+      document.getElementById("filename").textContent = state.name;
+      document.getElementById("filestamp").textContent = state.stamp;
+    }
+
+    frame.addEventListener("load", () => {
+      const doc = frame.contentDocument;
+      if (!doc || !doc.body || !doc.body.innerHTML) return;
+      const resize = () => { frame.style.height = doc.documentElement.scrollHeight + "px"; };
+      resize();
+      // Images sized after load can change the height
+      doc.querySelectorAll("img").forEach((img) => img.addEventListener("load", resize));
+    });
+
+    function loadText(name, text, lastModified) {
+      const div = document.createElement("div");
+      div.innerHTML = md.parse(text);
+      addHeadingIds(div);
+      state.name = name;
+      state.html = div.innerHTML;
+      state.stamp = `Last saved ${formatTimestamp(new Date(lastModified))}`;
+      render();
+    }
+
+    function loadFile(file) {
+      if (!/\.(md|markdown|mdown)$/i.test(file.name)) {
+        alert(`"${file.name}" doesn't look like a Markdown file (.md, .markdown, .mdown).`);
+        return;
+      }
+      file.text().then((text) => loadText(file.name, text, file.lastModified));
+    }
+
+    function handleFiles(files) {
+      if (!files.length) return;
+      if (files.length > 1) {
+        alert("The browser version converts one file at a time — taking the first. (The CLI handles batches.)");
+      }
+      loadFile(files[0]);
+    }
+
+    // Drop zone wiring
+    dropzone.addEventListener("click", () => fileinput.click());
+    dropzone.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileinput.click(); }
+    });
+    fileinput.addEventListener("change", () => handleFiles(fileinput.files));
+
+    ["dragover", "dragenter"].forEach((ev) =>
+      dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); }));
+    ["dragleave", "drop"].forEach((ev) =>
+      dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); }));
+    dropzone.addEventListener("drop", (e) => handleFiles(e.dataTransfer.files));
+
+    // Sample document
+    document.getElementById("samplelink").addEventListener("click", (e) => {
+      e.preventDefault();
+      fetch("sample.md")
+        .then((r) => {
+          if (!r.ok) throw new Error(r.statusText);
+          const mod = r.headers.get("Last-Modified");
+          return r.text().then((text) =>
+            loadText("sample.md", text, mod ? new Date(mod).getTime() : Date.now()));
+        })
+        .catch(() => alert("Could not load the sample document."));
+    });
+
+    // Theme toggle
+    document.querySelectorAll(".themes button").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.theme = btn.dataset.theme;
+        document.querySelectorAll(".themes button").forEach((b) =>
+          b.setAttribute("aria-pressed", String(b === btn)));
+        if (state.html) render();
+      });
+    });
+
+    // Print — the iframe document prints with its own @page rules
+    function printDoc() {
+      if (!state.html) return;
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    }
+
+    document.getElementById("printbtn").addEventListener("click", printDoc);
+    window.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "p" && state.html) {
+        e.preventDefault();
+        printDoc();
+      }
+    });
+
+    // Non-Chromium browsers don't render @page margin boxes (no page numbers/date)
+    const isChromium = /Chrome|Chromium|Edg\//.test(navigator.userAgent) && !/OPR\//.test(navigator.userAgent);
+    if (!isChromium) document.getElementById("browserwarn").style.display = "block";
+  </script>
+</body>
+</html>

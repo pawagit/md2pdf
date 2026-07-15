@@ -9,6 +9,14 @@ Uses the Chrome or Edge you already have — no admin rights, no bundled browser
 
 ![Sample PDF rendered by md2pdf in both themes](docs/preview.png)
 
+## Try it in your browser
+
+**[pawagit.github.io/md2pdf](https://pawagit.github.io/md2pdf/)** — drop a `.md`
+file on the page and save it as a styled PDF. It runs entirely in your browser:
+nothing is uploaded anywhere. Best in Chrome or Edge — other browsers omit the
+footer's page numbers and "last saved" date. The CLI below adds batch
+conversion and drag-and-drop onto an icon.
+
 ## Why md2pdf?
 
 - **Drag & drop** — drop `.md` files onto `convert.bat`; the PDFs appear next to them
@@ -160,6 +168,9 @@ The colours and sizes are defined once as **CSS variables** at the top of the
 file (the `:root` and `body.compact` blocks). Change a token there and every
 rule using it follows — no need to hunt through individual selectors.
 
+After editing, copy the file to the browser version too (`docs/style.css`) —
+CI fails with a reminder if the two drift apart.
+
 Key things you might want to tweak:
 
 | What             | Where                                    |
@@ -195,6 +206,7 @@ separate Chromium — it reuses whatever browser is already on your machine.
 | `style.css`   | All styling — themes, colors, typography           |
 | `config.json` | Active theme + per-theme page margins              |
 | `examples/`   | Sample document to test the conversion             |
+| `docs/`       | Browser version (GitHub Pages) + README assets     |
 
 ## Troubleshooting
 

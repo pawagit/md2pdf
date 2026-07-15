@@ -24,6 +24,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check web app copies are in sync
+        shell: pwsh
+        run: |
+          if ((Get-FileHash style.css).Hash -ne (Get-FileHash docs/style.css).Hash) {
+            throw "docs/style.css is out of sync with style.css - run: Copy-Item style.css docs/style.css"
+          }
+          if ((Get-FileHash examples/sample.md).Hash -ne (Get-FileHash docs/sample.md).Hash) {
+            throw "docs/sample.md is out of sync with examples/sample.md - run: Copy-Item examples/sample.md docs/sample.md"
+          }
+          Write-Host "OK: docs/ copies match their sources"
+
       - name: Convert sample Markdown to PDF
         run: node convert.js examples/sample.md
 

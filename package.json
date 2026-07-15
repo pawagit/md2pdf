@@ -1,6 +1,6 @@
 {
   "name": "md2pdf",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "description": "Drag-and-drop Markdown to PDF converter for Windows — uses your existing Chrome or Edge, no admin rights needed",
   "main": "convert.js",

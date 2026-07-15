@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-07-15
+
+### Added
+
+- Browser version (`docs/`, served via GitHub Pages): drop a `.md` file on the
+  page and save it as a styled PDF — fully client-side, nothing is uploaded;
+  page numbers and the date footer require Chrome/Edge
+
 ## [1.0.0] - 2026-07-15
 
 ### Added
@@ -32,4 +40,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.json` may be saved as UTF-8 with BOM (as Notepad does) — the BOM is
   stripped before parsing instead of silently falling back to defaults
 
+[1.1.0]: https://github.com/pawagit/md2pdf/releases/tag/v1.1.0
 [1.0.0]: https://github.com/pawagit/md2pdf/releases/tag/v1.0.0
