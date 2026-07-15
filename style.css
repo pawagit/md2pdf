@@ -1,0 +1,309 @@
+/*
+ * md2pdf — Custom PDF Stylesheet
+ * Edit this file to change the look of your PDFs.
+ *
+ * THEMES
+ *   The active theme is chosen in  config.json  ("theme": "comfortable" | "compact").
+ *   convert.js puts that name as a class on <body>, so the token blocks below
+ *   switch automatically:
+ *     • :root        → brand colours + the COMFORTABLE (roomy) sizing
+ *     • body.compact → overrides sizing for the COMPACT (smaller, denser) look
+ *   Colours are shared by both themes. Tweak a token once and every rule follows.
+ */
+
+/* ── Theme tokens ──────────────────────────────────────────────── */
+
+:root {
+  /* Brand colours (shared by all themes)
+     Blue = primary anchor (h1 rule, links, table head).
+     Amber = complementary secondary (h4 labels, blockquote).
+     Everything else stays neutral grey so the page isn't washed in one hue. */
+  --accent:                #0062ad;   /* primary accent — blue */
+  --accent-secondary:      #d97706;   /* secondary accent — warm amber (complement of the blue) */
+  --accent-secondary-soft: #fbf1e1;   /* light warm fill (blockquote background) */
+
+  --ink:         #232a31;        /* body text — warm-neutral charcoal */
+  --ink-strong:  #14181c;        /* headings / bold — near-black */
+  --ink-soft:    #5b6670;        /* muted text */
+
+  --surface:     #f3f4f6;        /* neutral light fill (table head) */
+  --surface-alt: #f6f7f9;        /* zebra rows, inline code background */
+  --border:      #e3e6ea;        /* hairline borders — neutral grey */
+
+  --code-ink:    #0062ad;        /* inline code text — primary accent — blue */
+  --code-bg:     #e8f1fb;        /* code block background — light blue */
+  --code-fg:     #0f3357;        /* code block text — dark navy (fits the blue) */
+  --code-border: #cfe0f1;        /* code block border — soft blue */
+
+  /* Typography & spacing — COMFORTABLE (default) */
+  --font-size:    11pt;
+  --line-height:  1.6;
+  --h1-size:      22pt;
+  --h2-size:      16pt;
+  --h3-size:      13pt;
+  --h4-size:      11pt;
+  --block-gap:    1em;           /* space below paragraphs, lists, blocks */
+  --heading-mt:   1.8em;         /* heading top margin */
+  --heading-mb:   0.55em;        /* heading bottom margin */
+  --list-pad:     1.8em;
+  --li-gap:       0.35em;
+  --pre-pad:      1em 1.2em;
+  --pre-size:     8.5pt;
+  --bq-pad:       0.6em 1.2em;
+  --table-size:   10pt;
+  --cell-pad:     0.55em 0.8em;
+  --hr-gap:       2em;
+}
+
+/* COMPACT theme — smaller type, tighter spacing */
+body.compact {
+  --font-size:    9.5pt;
+  --line-height:  1.4;
+  --h1-size:      17pt;
+  --h2-size:      13pt;
+  --h3-size:      11pt;
+  --h4-size:      9.5pt;
+  --block-gap:    0.65em;
+  --heading-mt:   1.15em;
+  --heading-mb:   0.35em;
+  --list-pad:     1.5em;
+  --li-gap:       0.2em;
+  --pre-pad:      0.7em 0.9em;
+  --pre-size:     7.5pt;
+  --bq-pad:       0.45em 0.9em;
+  --table-size:   8.5pt;
+  --cell-pad:     0.35em 0.6em;
+  --hr-gap:       1.3em;
+}
+
+/* ── Page & Base ───────────────────────────────────────────────── */
+
+@page {
+  size: A4;
+  /* Page margins are set in convert.js (per-theme, see config.json). */
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--font-size);
+  line-height: var(--line-height);
+  color: var(--ink);
+  background: #fff;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+.markdown-body {
+  max-width: 100%;
+  padding: 0;
+}
+
+/* ── Headings ──────────────────────────────────────────────────── */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Segoe UI Semibold", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  color: var(--ink-strong);
+  margin-top: var(--heading-mt);
+  margin-bottom: var(--heading-mb);
+  line-height: 1.3;
+  page-break-after: avoid;
+}
+
+h1 {
+  font-size: var(--h1-size);
+  font-weight: 700;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 0.35em;
+  margin-top: 0;
+}
+
+h2 {
+  font-size: var(--h2-size);
+  font-weight: 600;
+  color: var(--accent);
+  border-bottom: 1px solid var(--accent);
+  padding-bottom: 0.25em;
+}
+
+h3 {
+  font-size: var(--h3-size);
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+h4 {
+  font-size: var(--h4-size);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-secondary);
+}
+
+/* ── Paragraphs & Text ─────────────────────────────────────────── */
+
+p {
+  margin: 0 0 var(--block-gap) 0;
+  orphans: 3;
+  widows: 3;
+}
+
+strong {
+  font-weight: 600;
+  color: var(--ink-strong);
+}
+
+em {
+  font-style: italic;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* ── Lists ─────────────────────────────────────────────────────── */
+
+ul, ol {
+  margin: 0 0 var(--block-gap) 0;
+  padding-left: var(--list-pad);
+}
+
+li {
+  margin-bottom: var(--li-gap);
+}
+
+li > ul, li > ol {
+  margin-top: var(--li-gap);
+  margin-bottom: var(--li-gap);
+}
+
+/* Checkbox-style task lists — no bullets, the checkbox is the marker.
+   (marked emits plain <ul>, so match on the checkbox itself — directly in
+   the <li> for tight lists, wrapped in <p> for loose ones; the class
+   variant covers renderers that add GitHub's .contains-task-list) */
+ul.contains-task-list,
+ul:has(> li > input[type="checkbox"]),
+ul:has(> li > p > input[type="checkbox"]) {
+  list-style: none;
+  padding-left: 1.2em;
+}
+
+input[type="checkbox"] {
+  margin-right: 0.5em;
+}
+
+/* ── Blockquotes ───────────────────────────────────────────────── */
+
+blockquote {
+  margin: var(--block-gap) 0;
+  padding: var(--bq-pad);
+  border-left: 4px solid var(--accent-secondary);
+  background: var(--accent-secondary-soft);
+  color: var(--ink-soft);
+  border-radius: 0 6px 6px 0;
+}
+
+blockquote p:last-child {
+  margin-bottom: 0;
+}
+
+/* ── Code ──────────────────────────────────────────────────────── */
+
+code {
+  font-family: "Cascadia Code", "Fira Code", "Consolas", "Courier New", monospace;
+  font-size: 0.9em;
+  background: var(--surface-alt);
+  color: var(--code-ink);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+}
+
+pre {
+  margin: var(--block-gap) 0;
+  padding: var(--pre-pad);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: 1px solid var(--code-border);
+  border-radius: 8px;
+  font-size: var(--pre-size);
+  line-height: 1.5;
+  /* Wrap long lines instead of clipping them — a PDF has no horizontal scroll */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  page-break-inside: auto;
+}
+
+pre code {
+  background: none;
+  color: inherit;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+/* ── Tables ────────────────────────────────────────────────────── */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: var(--block-gap) 0;
+  font-size: var(--table-size);
+  page-break-inside: avoid;
+}
+
+thead {
+  background: var(--surface);
+}
+
+th {
+  font-weight: 600;
+  color: var(--ink-strong);
+  text-align: left;
+  padding: var(--cell-pad);
+  border-bottom: 2px solid var(--accent);
+}
+
+td {
+  padding: var(--cell-pad);
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr:nth-child(even) {
+  background: var(--surface-alt);
+}
+
+/* ── Horizontal Rules ──────────────────────────────────────────── */
+
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: var(--hr-gap) 0;
+}
+
+/* ── Images ────────────────────────────────────────────────────── */
+
+img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: var(--block-gap) 0;
+}
+
+/* ── Print helpers ─────────────────────────────────────────────── */
+
+h1, h2, h3 {
+  page-break-after: avoid;
+}
+
+table, blockquote, img {
+  page-break-inside: avoid;
+}

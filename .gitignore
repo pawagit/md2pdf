@@ -1,0 +1,13 @@
+# Dependencies
+node_modules/
+
+# Generated output (PDFs are written next to their source .md files)
+*.pdf
+
+# Logs
+npm-debug.log*
+
+# OS cruft
+Thumbs.db
+Desktop.ini
+.DS_Store

@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  smoke-test:
+    name: Convert sample document
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Convert sample Markdown to PDF
+        run: node convert.js examples/sample.md
+
+      - name: Verify PDF was created
+        shell: pwsh
+        run: |
+          $pdf = "examples/sample.pdf"
+          if (-not (Test-Path $pdf)) { throw "PDF was not created: $pdf" }
+          $size = (Get-Item $pdf).Length
+          if ($size -lt 10kb) { throw "PDF suspiciously small: $size bytes" }
+          Write-Host "OK: $pdf ($size bytes)"
+
+      - name: Upload sample PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: sample-pdf
+          path: examples/sample.pdf

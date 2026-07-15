@@ -1,0 +1,40 @@
+{
+  "name": "md2pdf",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Drag-and-drop Markdown to PDF converter for Windows — uses your existing Chrome or Edge, no admin rights needed",
+  "main": "convert.js",
+  "scripts": {
+    "convert": "node convert.js"
+  },
+  "keywords": [
+    "markdown",
+    "pdf",
+    "converter",
+    "md-to-pdf",
+    "markdown-to-pdf",
+    "puppeteer",
+    "chrome",
+    "edge",
+    "windows",
+    "drag-and-drop"
+  ],
+  "author": "pawa (https://pawa.ch)",
+  "license": "MIT",
+  "homepage": "https://github.com/pawagit/md2pdf#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pawagit/md2pdf.git"
+  },
+  "bugs": {
+    "url": "https://github.com/pawagit/md2pdf/issues"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "dependencies": {
+    "marked": "^18.0.6",
+    "marked-gfm-heading-id": "^4.1.4",
+    "puppeteer-core": "^25.3.0"
+  }
+}
