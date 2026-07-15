@@ -352,8 +352,12 @@
       loadFile(files[0]);
     }
 
-    // Drop zone wiring
-    dropzone.addEventListener("click", () => fileinput.click());
+    // Drop zone wiring — ignore clicks on links inside it (e.g. the sample
+    // link), which handle themselves and must not open the file browser
+    dropzone.addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      fileinput.click();
+    });
     dropzone.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileinput.click(); }
     });
