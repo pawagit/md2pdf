@@ -33,10 +33,19 @@ jobs:
           if ((Get-FileHash examples/sample.md).Hash -ne (Get-FileHash docs/sample.md).Hash) {
             throw "docs/sample.md is out of sync with examples/sample.md - run: Copy-Item examples/sample.md docs/sample.md"
           }
+          $mermaid = "node_modules/@mermaid-js/tiny/dist/mermaid.tiny.js"
+          if ((Get-FileHash $mermaid).Hash -ne (Get-FileHash docs/vendor/mermaid.tiny.js).Hash) {
+            throw "docs/vendor/mermaid.tiny.js is out of sync with the installed @mermaid-js/tiny - run: Copy-Item $mermaid docs/vendor/mermaid.tiny.js"
+          }
           Write-Host "OK: docs/ copies match their sources"
 
       - name: Convert sample Markdown to PDF
-        run: node convert.js examples/sample.md
+        shell: pwsh
+        run: |
+          $log = node convert.js examples/sample.md
+          $log
+          if ($LASTEXITCODE -ne 0) { throw "convert.js exited with code $LASTEXITCODE" }
+          if ($log -match "not rendered") { throw "A diagram in the sample failed to render (see log above)" }
 
       - name: Verify PDF was created
         shell: pwsh

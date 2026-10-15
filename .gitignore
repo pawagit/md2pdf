@@ -4,6 +4,10 @@ node_modules/
 # Generated output (PDFs are written next to their source .md files)
 *.pdf
 
+# Sample Files
+examples/
+!examples/sample.md
+
 # Logs
 npm-debug.log*
 
@@ -11,3 +15,6 @@ npm-debug.log*
 Thumbs.db
 Desktop.ini
 .DS_Store
+
+# Claude
+.claude-receipts/

@@ -298,6 +298,44 @@ img {
   margin: var(--block-gap) 0;
 }
 
+/* ── Diagrams (```mermaid fences, rendered to SVG by mermaid) ──── */
+/* Node fills, borders, lines and fonts are taken from the tokens above
+   (--code-bg, --accent, --ink-*, --surface*, --border), so diagrams follow
+   the theme without extra settings. */
+
+figure.mermaid {
+  margin: var(--block-gap) 0;
+  page-break-inside: avoid;      /* a diagram that fits on a page stays on one page */
+}
+
+figure.mermaid svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+/* A diagram taller than a page is cut into page-sized pieces (one <svg>
+   each) by convert.js / index.html, so the figure may break between them */
+figure.mermaid.split {
+  page-break-inside: auto;
+}
+
+/* A diagram mermaid could not parse stays as its source code, with the
+   error message as a caption (data-error is set by convert.js / index.html) */
+pre.mermaid-error {
+  border-color: var(--accent-secondary);
+}
+
+pre.mermaid-error::before {
+  content: "⚠ Diagram not rendered — " attr(data-error);
+  display: block;
+  margin-bottom: 0.6em;
+  font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  font-weight: 600;
+  color: var(--accent-secondary);
+}
+
 /* ── Print helpers ─────────────────────────────────────────────── */
 
 h1, h2, h3 {

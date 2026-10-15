@@ -8,6 +8,7 @@
  *   Drag one or more .md files onto convert.bat
  *
  * Output: PDF saved next to each input file (e.g. README.md → README.pdf)
+ * Fenced ```mermaid blocks are rendered as vector diagrams.
  */
 
 const fs = require("fs");
@@ -17,6 +18,29 @@ const { pathToFileURL } = require("url");
 const { Marked } = require("marked");
 const { gfmHeadingId } = require("marked-gfm-heading-id");
 const puppeteer = require("puppeteer-core");
+
+// Mermaid's "tiny" build: one self-contained file, no further dependencies.
+// It is loaded into the page only when a document contains a ```mermaid fence.
+const MERMAID_JS = require.resolve("@mermaid-js/tiny");
+
+// Paper size. Margins come from config.json (per theme).
+const PAGE_FORMAT = "A4"; // or "Letter"
+const PAGE_SIZES = { A4: ["210mm", "297mm"], Letter: ["8.5in", "11in"] };
+const PX_PER_UNIT = { px: 1, mm: 96 / 25.4, cm: 96 / 2.54, in: 96, pt: 96 / 72 };
+
+function toPx(length) {
+  const m = /^\s*([\d.]+)\s*(px|mm|cm|in|pt)\s*$/i.exec(String(length));
+  return m ? Number(m[1]) * PX_PER_UNIT[m[2].toLowerCase()] : 0;
+}
+
+// Printable area in CSS px — tells renderDiagrams() how tall a page is
+function printableArea(margin) {
+  const [w, h] = PAGE_SIZES[PAGE_FORMAT];
+  return {
+    width: toPx(w) - toPx(margin.left) - toPx(margin.right),
+    height: toPx(h) - toPx(margin.top) - toPx(margin.bottom),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // 1. Locate Chrome / Edge on Windows (no admin install needed)
@@ -86,13 +110,20 @@ function buildHtml(markdownContent, cssContent, title, theme, baseHref) {
 
   const body = marked.parse(markdownContent);
 
+  // marked emits ```mermaid fences as <pre><code class="language-mermaid">;
+  // renderDiagrams() (2d) turns them into SVG inside the browser. The script
+  // is only included when needed — it costs ~0.5 s to load.
+  const mermaidTag = body.includes('class="language-mermaid"')
+    ? `\n  <script src="${pathToFileURL(MERMAID_JS).href}"></script>`
+    : "";
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <base href="${baseHref}">
   <title>${escapeHtml(title)}</title>
-  <style>${cssContent}</style>
+  <style>${cssContent}</style>${mermaidTag}
 </head>
 <body class="${theme}">
   <article class="markdown-body">
@@ -124,6 +155,118 @@ function footerLabel(mode, modifiedAt) {
 }
 
 // ---------------------------------------------------------------------------
+// 2d. Render Mermaid diagrams — runs INSIDE the browser via page.evaluate()
+// ---------------------------------------------------------------------------
+// Replaces every <pre><code class="language-mermaid"> with the rendered SVG.
+// Colours and fonts are read from the style.css tokens, so diagrams follow
+// the active theme. A diagram that fails to parse keeps its source block
+// (class "mermaid-error", message in data-error) and is reported back.
+// `printable` is the page's printable area in CSS px ({ width, height }).
+// A diagram taller than that is cut into page-sized pieces, because Chrome
+// cannot paginate one SVG that is taller than a page: it spills onto the
+// next page and then leaves a blank of the same height on the page after.
+// Keep this function self-contained (no Node globals) and in sync with the
+// copy in docs/index.html.
+async function renderDiagrams(printable = null, doc = document, mermaid = window.mermaid) {
+  const blocks = [...doc.querySelectorAll("pre > code.language-mermaid")];
+  const result = { count: blocks.length, errors: [], split: [] };
+  if (!blocks.length || !mermaid) return result;
+
+  const css = doc.defaultView.getComputedStyle(doc.body);
+  const token = (name) => css.getPropertyValue(name).trim();
+  mermaid.initialize({
+    startOnLoad: false,
+    suppressErrorRendering: true, // no "bomb" graphic — we keep the source instead
+    theme: "base",
+    themeVariables: {
+      fontFamily: css.fontFamily,
+      fontSize: css.fontSize, // follows the theme (compact / comfortable)
+      primaryColor: token("--code-bg"),
+      primaryBorderColor: token("--accent"),
+      primaryTextColor: token("--ink-strong"),
+      lineColor: token("--ink-soft"),
+      secondaryColor: token("--surface"),
+      tertiaryColor: token("--surface-alt"),
+      clusterBkg: token("--surface-alt"),
+      clusterBorder: token("--border"),
+      edgeLabelBackground: "#ffffff",
+    },
+  });
+  await doc.fonts.ready;
+
+  for (const [i, code] of blocks.entries()) {
+    const pre = code.parentElement;
+    try {
+      const { svg } = await mermaid.render(`md2pdf-diagram-${i}`, code.textContent);
+      const figure = doc.createElement("figure");
+      figure.className = "mermaid";
+      figure.innerHTML = svg;
+      pre.replaceWith(figure);
+      const pages = printable ? splitTallDiagram(figure.firstElementChild, printable) : 1;
+      if (pages > 1) {
+        figure.classList.add("split");
+        result.split.push({ index: i + 1, pages });
+      }
+    } catch (e) {
+      // First line only ("Parse error on line 4"); the rest lists every expected token
+      const message = String((e && e.message) || e).split("\n")[0].replace(/:\s*$/, "");
+      pre.classList.add("mermaid-error");
+      pre.dataset.error = message; // shown as a caption by style.css
+      result.errors.push({ index: i + 1, message });
+    }
+  }
+  return result;
+
+  // Cuts an SVG taller than the printable page into consecutive viewBox
+  // windows, one <svg> each. A piece is at most 85 % of a page so the first
+  // one can share its page with the heading above it. Each cut is moved up,
+  // by up to 40 % of a piece, to the nearest line that crosses no node or
+  // label. Returns the number of pieces.
+  function splitTallDiagram(svg, page) {
+    const vb = (svg.getAttribute("viewBox") || "").split(/[\s,]+/).map(Number);
+    if (vb.length !== 4 || !(vb[3] > 0)) return 1;
+    const [x, top, width, height] = vb;
+    const scale = Math.min(1, page.width / width); // printed px per SVG unit
+    if (height * scale <= page.height) return 1;
+    const pieceH = (page.height * 0.85) / scale;
+
+    // Boxes a cut should not pass through: anything small enough to be a
+    // node or a label (subgraph frames and long edges are left out)
+    const root = svg.getBoundingClientRect();
+    const k = root.height / height; // screen px per SVG unit
+    const boxes = k > 0
+      ? [...svg.querySelectorAll("rect, polygon, circle, ellipse, path, foreignObject, text")]
+          .map((el) => {
+            const r = el.getBoundingClientRect();
+            return { top: top + (r.top - root.top) / k, bottom: top + (r.bottom - root.top) / k };
+          })
+          .filter((b) => b.bottom > b.top && b.bottom - b.top < pieceH / 2)
+      : [];
+    const clear = (y) => !boxes.some((b) => b.top < y - 1 && b.bottom > y + 1);
+
+    const edges = [top];
+    let y = top;
+    while (top + height - y > pieceH) {
+      let cut = y + pieceH;
+      for (let c = cut; c > y + pieceH * 0.6; c -= 1) {
+        if (clear(c)) { cut = c; break; }
+      }
+      edges.push(cut);
+      y = cut;
+    }
+    edges.push(top + height);
+
+    const pieces = edges.slice(1).map((_, i) => (i === 0 ? svg : svg.cloneNode(true)));
+    pieces.forEach((piece, i) => {
+      piece.setAttribute("viewBox", `${x} ${edges[i]} ${width} ${edges[i + 1] - edges[i]}`);
+      piece.removeAttribute("height"); // height follows the viewBox (CSS height: auto)
+      if (i > 0) svg.parentNode.appendChild(piece);
+    });
+    return pieces.length;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // 3. Convert one .md file to .pdf
 // ---------------------------------------------------------------------------
 async function convertFile(mdPath, browser, css, theme, margin, timestampMode) {
@@ -150,9 +293,19 @@ async function convertFile(mdPath, browser, css, theme, margin, timestampMode) {
   try {
     await page.goto(pathToFileURL(tmpHtml).href, { waitUntil: "networkidle0" });
 
+    // Diagrams: a failure is a warning, not a failed file — the PDF still
+    // ships, with the diagram's source and the error message in place.
+    const { errors, split } = await page.evaluate(renderDiagrams, printableArea(margin));
+    for (const { index, message } of errors) {
+      console.log(`  ⚠️  Diagram ${index} not rendered — ${message} (source kept in the PDF)`);
+    }
+    for (const { index, pages } of split) {
+      console.log(`  📐 Diagram ${index} is taller than a page — split into ${pages} parts`);
+    }
+
     await page.pdf({
       path: outPath,
-      format: "A4",
+      format: PAGE_FORMAT,
       printBackground: true,
       margin,
       displayHeaderFooter: true,

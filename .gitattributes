@@ -1,0 +1,3 @@
+# The browser copy of mermaid must stay byte-identical to the npm package
+# (CI hash-checks it), so never convert its line endings on checkout.
+docs/vendor/mermaid.tiny.js -text

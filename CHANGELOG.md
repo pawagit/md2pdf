@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-15
+
+### Added
+
+- Mermaid diagrams: fenced ```` ```mermaid ```` blocks (flowcharts, sequence,
+  class, state, ER, Gantt, …) are rendered as vector graphics, in both the
+  CLI and the browser version. Rendering happens inside the same headless
+  browser that prints the PDF — no extra tools, nothing leaves the machine.
+  Colours and fonts follow the active theme through the `style.css` tokens
+- A diagram that fails to parse keeps its source in the PDF with the error
+  message as a caption; the CLI prints a warning and the file still converts
+- A diagram taller than a page is split into page-sized parts, cut where no
+  node or label is in the way, and continues on the next page at full size
+  (Chrome cannot paginate one oversized SVG without leaving blank pages)
+- New dependency `@mermaid-js/tiny` (mermaid's self-contained build, no
+  further dependencies); the browser version ships a copy in `docs/vendor/`
+  and CI checks that it matches the installed package
+
 ## [1.1.0] - 2026-07-15
 
 ### Added
@@ -40,5 +58,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.json` may be saved as UTF-8 with BOM (as Notepad does) — the BOM is
   stripped before parsing instead of silently falling back to defaults
 
+[1.2.0]: https://github.com/pawagit/md2pdf/releases/tag/v1.2.0
 [1.1.0]: https://github.com/pawagit/md2pdf/releases/tag/v1.1.0
 [1.0.0]: https://github.com/pawagit/md2pdf/releases/tag/v1.0.0

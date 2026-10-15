@@ -26,6 +26,8 @@ conversion and drag-and-drop onto an icon.
 - **Print-quality output** — A4, page numbers, an optional "last saved" timestamp,
   smart page breaks, GitHub-flavored Markdown (tables, task lists, heading
   anchors), images — local and web
+- **Diagrams** — fenced ```` ```mermaid ```` blocks (flowcharts, sequence, class,
+  state, ER, Gantt …) become crisp vector graphics in your document's colours
 - **Fully styleable** — two built-in themes; every color and size is a CSS variable in `style.css`
 
 ## Requirements
@@ -159,6 +161,31 @@ aware that copying files or checking them out from git can rewrite it. (The
 PDF's creation time is always embedded in its metadata anyway, visible in the
 file properties.)
 
+## Diagrams (Mermaid)
+
+A fenced code block tagged `mermaid` is rendered as a vector diagram:
+
+````md
+```mermaid
+flowchart LR
+  A["Markdown"] --> B["PDF"]
+```
+````
+
+- **Supported**: flowcharts, sequence, class, state, ER, Gantt, pie, git,
+  timeline, quadrant and most other [Mermaid](https://mermaid.js.org) diagram
+  types. Mindmap and architecture diagrams (and KaTeX math) are not included —
+  md2pdf ships Mermaid's compact build.
+- **Colours and fonts** follow the active theme automatically: node fills,
+  borders and lines are derived from the `style.css` tokens, so there is
+  nothing extra to configure.
+- **Errors**: a diagram with a syntax error stays in the PDF as its source
+  code, with the error message as an amber caption; the console prints the
+  same warning. The rest of the file converts as usual.
+- **Tall diagrams** keep their size: a diagram taller than a page is split
+  into page-sized parts, cut where no node or label is in the way, and
+  continues on the next page.
+
 ## Customising the look
 
 Edit **`style.css`** to change fonts, colors, spacing, etc.
@@ -180,10 +207,11 @@ Key things you might want to tweak:
 | Body font        | `style.css` → `body { font-family … }`   |
 | Body font size   | `style.css` → `--font-size` (per theme)  |
 | Code block theme | `style.css` → `--code-bg` / `--code-fg`  |
+| Diagram colours  | derived from the tokens above (`--accent`, `--code-bg`, …) |
 | Page margins     | `config.json` → `themes.<name>.margin`   |
 | Active theme     | `config.json` → `theme`                  |
 | Footer timestamp | `config.json` → `footer.timestamp`       |
-| Page size        | `convert.js` → `format:`                 |
+| Page size        | `convert.js` → `PAGE_FORMAT`             |
 
 ## How it works
 
@@ -192,7 +220,9 @@ Key things you might want to tweak:
    [marked-gfm-heading-id](https://github.com/markedjs/marked-gfm-heading-id))
 2. The HTML is wrapped with `style.css`
 3. **[puppeteer-core](https://pptr.dev/)** opens your system Chrome/Edge in headless mode
-4. Chrome's print-to-PDF engine renders the final PDF
+4. Inside that page, **[mermaid](https://mermaid.js.org)** turns each
+   ```` ```mermaid ```` block into an inline SVG (only loaded when a document has one)
+5. Chrome's print-to-PDF engine renders the final PDF
 
 Because it uses `puppeteer-core` (not `puppeteer`), it does **not** download a
 separate Chromium — it reuses whatever browser is already on your machine.
@@ -207,6 +237,7 @@ separate Chromium — it reuses whatever browser is already on your machine.
 | `config.json` | Active theme + per-theme page margins              |
 | `examples/`   | Sample document to test the conversion             |
 | `docs/`       | Browser version (GitHub Pages) + README assets     |
+| `docs/vendor/`| Browser copies of marked and mermaid               |
 
 ## Troubleshooting
 
@@ -216,7 +247,9 @@ separate Chromium — it reuses whatever browser is already on your machine.
 | `node is not recognized` | Install Node.js (LTS) from [nodejs.org](https://nodejs.org) or ask IT |
 | PDF not written / "file in use" | Close the PDF in your viewer before re-converting — Windows locks open files |
 | Fonts look wrong in the PDF | Edit `style.css` to use fonts installed on your machine |
-| Want Letter size, not A4 | In `convert.js`, change `format: "A4"` to `format: "Letter"` |
+| Want Letter size, not A4 | In `convert.js`, change `PAGE_FORMAT = "A4"` to `"Letter"` |
+| Diagram appears as code with an amber ⚠ caption | The Mermaid source has a syntax error — the caption and the console show the message; fix it and re-convert |
+| Mindmap / architecture diagram not rendered | Not part of Mermaid's compact build that md2pdf ships; other diagram types work |
 
 ## Contributing
 
